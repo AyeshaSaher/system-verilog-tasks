@@ -1,0 +1,62 @@
+// Task 23: Code for transaction class is mentioned below. Write a code to send 10 randomly generated transaction data values between generator and driver using a parametrized mailbox. Also, verify the data by printing the value of data members of generator and driver.
+
+class Transaction;
+    rand bit [7:0] data_a, data_b;  
+    rand bit write_enable;          
+endclass
+
+class Generator;
+    Transaction transaction_item;          
+    mailbox #(Transaction) transaction_mbx;  
+    function new(mailbox #(Transaction) mbx);
+        this.transaction_mbx = mbx;
+    endfunction
+    task run();
+        for (int i = 0; i < 10; i++) begin
+            transaction_item = new();  // Create a new transaction
+            if (!transaction_item.randomize()) begin
+                $display("Randomization failed at time: %0t", $time);
+                $finish;
+            end
+
+            transaction_mbx.put(transaction_item);  
+            $display("[Generator]: %0t: data_a: %0d, data_b: %0d, write_enable: %0d",
+                      $time, transaction_item.data_a, transaction_item.data_b, transaction_item.write_enable);
+            #10;  
+        end
+    endtask
+endclass
+
+class Driver;
+    Transaction received_transaction;      
+    mailbox #(Transaction) transaction_mbx;  
+    function new(mailbox #(Transaction) mbx);
+        this.transaction_mbx = mbx;
+    endfunction
+    task run();
+        forever begin
+            transaction_mbx.get(received_transaction); 
+            $display("[Driver]: %0t: data_a: %0d, data_b: %0d, write_enable: %0d",
+                      $time, received_transaction.data_a, received_transaction.data_b, received_transaction.write_enable);
+        end
+    endtask
+endclass
+
+module Testbench;
+    Generator gen_inst;           
+    Driver drv_inst;             
+    mailbox #(Transaction) mbx_inst;  
+    initial begin
+        mbx_inst = new();        
+        gen_inst = new(mbx_inst);  
+        drv_inst = new(mbx_inst);  
+        fork
+            gen_inst.run();
+            drv_inst.run();
+        join
+    end
+    initial begin
+        #200;
+        $finish;
+    end
+endmodule

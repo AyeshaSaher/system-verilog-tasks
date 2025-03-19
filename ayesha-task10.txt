@@ -1,0 +1,20 @@
+`timescale 1ns/1ps
+module tb;
+
+  function int mulf(int a, int b);
+    return a * b;
+  endfunction
+    
+  function void compf(int mul, int er);
+    if (mul == er)
+      $display("Test Passed!");
+    else
+      $display("Test Failed!");
+  endfunction  
+
+  initial begin
+    int m;  
+    m = mulf(3, 5);
+    compf(m, 15);
+  end
+endmodule

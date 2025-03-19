@@ -1,0 +1,51 @@
+`timescale 1ns / 1ps
+
+// Task 21: Create two tasks each capable of sending a message to console at a fixed interval (20ns for Task1 and 40ns for Task2).
+// Assume Task1 sends the message "Task 1 triggered" after 20ns, 
+// while Task2 sends the message "Task 2 triggered" after 40ns. 
+// Keep the count of the number of times Task 1 and Task 2 is triggered by adding a variable for keeping track of the task execution, 
+// and incrementing with each trigger. 
+// Execute both tasks in parallel till 200ns.
+// Display the number of times Task 1 and Task 2 were executed after 200ns before calling $finish for stopping the simulation.
+
+module task_scheduler;
+    integer task1_count = 0;
+    integer task2_count = 0;
+
+    task Task1;
+        begin
+            forever begin
+                #20;  // Wait for 20ns
+                task1_count = task1_count + 1;
+                $display("Task 1 triggered at time %0t", $time);
+            end
+        end
+    endtask
+
+    task Task2;
+        begin
+            forever begin
+                #40;  // Wait for 40ns
+                task2_count = task2_count + 1;
+                $display("Task 2 triggered at time %0t", $time);
+            end
+        end
+    endtask
+
+    initial begin
+        fork
+            Task1();
+            Task2();
+        join
+
+        // Wait for 200ns before stopping the simulation
+        #200;
+        // Display the final counts
+        $display("Task 1 executed %0d times.", task1_count);
+        $display("Task 2 executed %0d times.", task2_count);
+
+        // End simulation
+        $finish;
+    end
+
+endmodule

@@ -1,0 +1,98 @@
+/* 
+Task 24: Write transaction, generator, driver and interface code for a synchronous 4-bit multiplier, whose design code is shown below:
+*/
+
+interface add_if;
+  logic [7:0] prod; 
+  bit clk;
+  logic [3:0] a, b;
+endinterface
+
+class transaction;
+  randc bit [3:0] a, b;
+  bit [7:0] prod;
+
+  constraint c1 { a inside {[0:5]}; b inside {[10:15]}; }
+
+  function transaction copy();
+    transaction copy = new();
+    copy.a = this.a;
+    copy.b = this.b;
+    copy.prod = this.prod;
+  endfunction
+
+  task display(string val);
+    $display("--------------%0s------------", val);
+    $display("at time %0t , a: %0d, b: %0d, prod: %0d", $time, a, b, prod);
+  endtask
+endclass
+
+class generator;
+  transaction trans_gen;
+  mailbox #(transaction) mbx;
+
+  function new(mailbox #(transaction) mbx);
+    this.mbx = mbx;
+    trans_gen = new();
+  endfunction
+
+  task run();
+    for (int i = 0; i < 10; i++) begin
+      if (!trans_gen.randomize()) begin
+        $display("Randomization failed at time: %0t", $time);
+        $finish;
+      end
+      mbx.put(trans_gen.copy());
+      trans_gen.display("GENERATOR");
+      #10;
+    end
+  endtask
+endclass
+
+class driver;
+  transaction trans_drv;
+  mailbox #(transaction) mbx;
+  virtual add_if aif;
+
+  function new(mailbox #(transaction) mbx);
+    this.mbx = mbx;    
+  endfunction
+
+  task run();
+    forever begin
+      mbx.get(trans_drv);
+      @(posedge aif.clk);
+      aif.a <= trans_drv.a;
+      aif.b <= trans_drv.b;
+      trans_drv.display("DRIVER");
+    end       
+  endtask
+endclass
+
+module tb();
+  add_if aif();
+  generator gen;
+  driver drv;
+  mailbox #(transaction) mbx;
+
+  initial begin
+    mbx = new();
+    gen = new(mbx);
+    drv = new(mbx);
+    
+    drv.aif = aif;
+
+    fork 
+      gen.run();
+      drv.run();
+    join    
+  end
+
+  initial aif.clk = 0;
+  always #5 aif.clk = ~aif.clk;
+
+  initial begin
+    #200;
+    $finish;
+  end
+endmodule

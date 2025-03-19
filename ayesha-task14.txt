@@ -1,0 +1,32 @@
+/*
+Task14:
+Assume a class consists of three data members: a, b, and c, each of size 4 bits. Create a task inside the class that returns the result of the addition of these data members. The task must also be capable of sending the values of a, b, and c, as well as the result of their addition, to the console. Verify your implementation by using the values 1, 2, and 4 for a, b, and c, respectively.
+
+*/class first;
+  bit [3:0] a;
+  bit [3:0] b;
+  bit [3:0] c;
+
+  function new(bit [3:0] a, bit [3:0] b, bit [3:0] c);
+    this.a = a;
+    this.b = b;
+    this.c = c;
+    $display("Initial values: a: %0d, b: %0d, c: %0d", this.a, this.b, this.c);
+  endfunction
+  
+  task sum;
+    bit [4:0] result; // To hold the sum (5 bits to accommodate overflow)
+    result = this.a + this.b + this.c;
+    $display("Sum: %0d", result);
+  endtask
+  
+endclass
+
+module tb; 
+  first f;
+
+  initial begin
+    f = new(1, 2, 4);
+    f.sum();
+  end
+endmodule

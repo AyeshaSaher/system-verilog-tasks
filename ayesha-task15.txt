@@ -1,0 +1,45 @@
+// Task 15: Create a deep copy of the generator class. 
+// To verify the deep copy, create an object using the copy method in the testbench module. 
+// Update the values of the data members in the copied class, 
+// and then print the values from both the original and copied class.
+
+class generator;
+    bit [3:0] a = 5; 
+    bit [3:0] b = 10; 
+    bit [4:0] sum;
+
+    function generator copy();
+        generator generator_copy = new();
+        generator_copy.a = this.a;
+        generator_copy.b = this.b;
+        generator_copy.sum = this.sum;
+        return generator_copy;
+    endfunction
+
+    function void print();
+        sum = a + b;
+        $display("a = %0d, b = %0d, sum = %0d", a, b, sum);
+    endfunction
+endclass
+
+module testbench;
+    generator s1, s1_copy;
+
+    initial begin
+        s1 = new();
+        $display("Original Values:");
+        s1.print();
+        
+        s1_copy = s1.copy();
+        
+        
+        s1.a = 7;
+        s1.b = 14;
+
+        $display("After modification (Original Values):");
+        s1.print();
+        
+        $display("Copied Values:");
+        s1_copy.print();
+    end
+endmodule

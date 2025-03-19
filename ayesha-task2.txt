@@ -1,0 +1,28 @@
+`timescale 1ps/1ps
+
+module t2;
+
+  reg clk;
+
+  initial begin
+    clk = 0;
+  end
+
+  always begin
+    #40000 clk = ~clk; 
+  end
+  
+  initial begin
+    #70000 $finish;
+  end
+  
+  initial begin
+    $dumpfile("dump.vcd");
+    $dumpvars;
+  end
+  
+  initial begin
+    $monitor("clk at t:%0t: %b", $time, clk);
+  end 
+
+endmodule

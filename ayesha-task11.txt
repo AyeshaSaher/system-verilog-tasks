@@ -1,0 +1,27 @@
+`timescale 1ns/1ps
+module testbench();
+  reg clk;
+  integer unsigned period = 40;
+  real duty_cycle = 0.4;
+
+  task toff();
+    #(period * (1 - duty_cycle));
+  endtask
+
+  task ton();
+    #(period * duty_cycle);
+  endtask
+
+  task waveform();
+    clk = 0;
+    forever begin
+      ton(); clk = ~clk; 
+      toff(); clk = ~clk;
+    end
+  endtask
+
+  initial begin
+    waveform();
+    #100 $finish;
+  end
+endmodule

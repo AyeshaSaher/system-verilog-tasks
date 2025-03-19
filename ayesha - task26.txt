@@ -1,0 +1,184 @@
+// Task 26: Modify the D-Flipflop testbench code used in this section to send only 1'bx values for all transactions.
+
+interface inf;  
+  logic clk;
+  logic d;
+  logic q;
+endinterface
+
+class transaction;
+  randc bit d;  
+  bit q;
+
+  function transaction copy();
+    copy = new();
+    copy.d = this.d;
+    copy.q = this.q;
+  endfunction
+
+  task display(string tag);
+    $display("[%0s]: %0t: d: %0d, q: %0d", tag, $time, d, q);
+  endtask
+endclass
+
+class generator;
+  mailbox #(transaction) mbx_d;
+  mailbox #(transaction) mbx_s;
+  transaction trans_g;
+  event done;
+  event next;
+
+  function new(mailbox #(transaction) mbx_d, mailbox #(transaction) mbx_s);
+    this.mbx_d = mbx_d;
+    this.mbx_s = mbx_s;
+    trans_g = new();
+  endfunction
+
+  task run();
+    for (int i = 0; i < 10; i++) begin
+      trans_g.d = 1'bx;
+      mbx_d.put(trans_g.copy());
+      mbx_s.put(trans_g.copy());
+      trans_g.display("GEN");
+      @(next);
+    end
+    -> done;
+    $display("[GEN]: %0t: Done Triggered", $time);
+  endtask  
+endclass
+
+class driver;
+  mailbox #(transaction) mbx;
+  transaction trans_d;
+  virtual inf aif;  
+
+  function new(mailbox #(transaction) mbx);
+    this.mbx = mbx;
+  endfunction
+
+  task run();
+    forever begin
+      mbx.get(trans_d);
+      trans_d.display("DRV");
+      @(posedge aif.clk);
+      aif.d <= trans_d.d;
+    end    
+  endtask
+endclass
+
+class monitor;
+  transaction trans_m;
+  mailbox #(transaction) mbx;
+  virtual inf aif;  
+
+  function new(mailbox #(transaction) mbx);
+    this.mbx = mbx;
+  endfunction
+
+  task run();
+    trans_m = new();
+    forever begin
+      repeat (3) @ (posedge aif.clk);
+      trans_m.d = aif.d;
+      trans_m.q = aif.q;
+      trans_m.display("MON");
+      mbx.put(trans_m);
+    end 
+  endtask  
+endclass
+
+class scoreboard;
+  transaction trans_sg;
+  transaction trans_sm;
+  mailbox #(transaction) mbx_m;
+  mailbox #(transaction) mbx_g;
+  event next;
+  int correct = 0;
+  int err = 0;
+
+  function new(mailbox #(transaction) mbx_m, mailbox #(transaction) mbx_g);
+    this.mbx_m = mbx_m;
+    this.mbx_g = mbx_g;
+  endfunction
+
+  task run();
+    $display("[SCO]");
+    forever begin
+      mbx_m.get(trans_sm);
+      $display("[SCO]: %0t: mailbox from monitor received", $time);
+      mbx_g.get(trans_sg);
+      $display("[SCO]: %0t: mailbox from generator received", $time);
+      if ((trans_sg.d) == (trans_sm.q)) begin
+        correct++;
+        $display("[SCO]: %0t: d: %0d, q: %0d", $time, trans_sg.d, trans_sm.q);
+        $display("[SCO]: Test Passed: Correct: %0d, Error: %0d", correct, err);
+      end
+      else begin
+        err++;
+        $display("[SCO]: %0t: d: %0d, q: %0d", $time, trans_sg.d, trans_sm.q);
+        $display("[SCO]: Test Failed: Correct: %0d, Error: %0d", correct, err);
+      end
+      -> next;
+    end    
+  endtask  
+endclass
+
+class environment;
+  generator gen;
+  driver drv;
+  monitor mon;
+  scoreboard sco;
+  mailbox #(transaction) mbx_gd;
+  mailbox #(transaction) mbx_gs;
+  mailbox #(transaction) mbx_ms;
+  virtual inf aif;  
+  event done;
+  event next;
+
+  function new(virtual inf aif);  
+    mbx_gd = new();
+    mbx_gs = new();
+    mbx_ms = new();
+    gen = new(mbx_gd, mbx_gs);
+    drv = new(mbx_gd);
+    mon = new(mbx_ms);
+    sco = new(mbx_ms, mbx_gs);
+    this.aif = aif;
+    drv.aif = this.aif;
+    mon.aif = this.aif;
+    gen.done = this.done;
+    gen.next = next;
+    sco.next = next;
+  endfunction
+
+  task run();
+    fork 
+      gen.run();
+      drv.run();
+      mon.run();
+      sco.run();
+    join_any
+    wait(done.triggered);
+    $display("[ENV]: %0t: Done received", $time);
+    $finish;
+  endtask
+endclass
+
+module tb;
+  inf aif();  
+  environment env;
+
+  initial aif.clk = 0;
+  always #5 aif.clk = ~aif.clk;
+
+  dff dut (
+    .clk(aif.clk),
+    .d(aif.d),
+    .q(aif.q)
+  );
+
+  initial begin
+    env = new(aif);
+    env.run();
+  end
+endmodule

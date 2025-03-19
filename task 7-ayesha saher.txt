@@ -1,0 +1,36 @@
+
+
+module tb;																//start module
+  int arr1[]; 															 //dynamic array
+
+  initial begin 														 // starts initial begin
+    		
+    arr1 = new[7]; 														// defin 7 indexes
+
+    
+    for (int i = 1; i < 8; i++) 										 // For - loop from 1 to 7
+    begin
+      arr1[i-1] = i * 7;												// set index to 0  
+    end																	// end for loop
+
+    $display("Initial arr1: %0p", arr1); 								// display arr1 - from 7to 49
+
+  
+    #20;  																 //wait 20ns
+    
+    arr1 = new[20](arr1);  												 // dynamic array of 20
+    
+    //arr1 = '{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20};   	 // make an array of 20 elements
+  //  $display("Array of 20 Elements: %0p", arr1); 						 // display array of 20 elements
+    
+    
+    for (int i = 8; i < 21; i++)  										// For loop - This Loop runs from 7 to 20
+    begin
+      arr1[i-1] = i * 5;												// starts from index 7 - multiply 7th index value to 5
+    end    																//end of for loop
+    
+    $display("Array of 20 Elements: %0p", arr1);    					// display 20 elements of an array
+    
+
+  end  																	// end of initial begin
+endmodule																// endmodule

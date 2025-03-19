@@ -1,0 +1,227 @@
+/*
+ Task 25: Create monitor, scoreboard, environment and testbench top code for the synchronous 4-bit multiplier, whose transaction, generator, driver and interface have already been coded. Design top is again shown here:
+*/
+module add (
+  input clk,
+  input [3:0] a, b,
+  output reg [7:0] mul);
+  always @ (posedge clk) begin
+    mul <= a * b;    
+  end  
+endmodule
+
+interface add_if;
+  logic clk;
+  logic [3:0] a, b;
+  logic [7:0] mul;
+endinterface
+
+class transaction;
+  randc bit [3:0] a, b;
+  bit [7:0] mul;
+  
+  constraint c1 {a inside {[0:5]}; b inside {[10:15]};}
+  
+  virtual function transaction copy();
+    copy = new();
+    copy.a = this.a;
+    copy.b = this.b;
+    copy.mul = this.mul;
+  endfunction
+  
+  task display(string tag);
+    $display("[%0s]: %0t: a: %0d, b: %0d, mul: %0d", tag, $time, a, b, mul);
+  endtask
+  
+endclass
+
+class error extends transaction;
+  function error copy();
+    copy = new();
+    copy.a = 0;
+    copy.b = 0;
+    copy.mul = this.mul;    
+  endfunction
+endclass
+
+class generator;
+  mailbox #(transaction) mbx_d;
+  mailbox #(transaction) mbx_s;
+  transaction trans_g;
+  
+  event done;
+  event next;
+  int count;
+  
+  function new (mailbox #(transaction) mbx_d, mailbox #(transaction) mbx_s);
+    this.mbx_d = mbx_d;
+    this.mbx_s = mbx_s;
+    trans_g = new();
+  endfunction
+  
+  task run();
+    for (int i=0; i<count; i++) begin
+      if (trans_g.randomize());
+      else begin
+        $display("[GEN]: %0t: Randomization Failed", $time);
+        $finish;
+      end
+      mbx_d.put(trans_g.copy());
+      mbx_s.put(trans_g.copy());
+      trans_g.display("GEN");
+      @(next);
+    end
+    -> done;
+    $display("[GEN]: %0t: Done Triggered", $time);
+  endtask  
+endclass
+
+class driver;
+  mailbox #(transaction) mbx;
+  transaction trans_d;
+  
+  virtual add_if aif;
+  
+  function new (mailbox #(transaction) mbx);
+    this.mbx = mbx;
+  endfunction
+  
+  task run();
+    forever begin
+      mbx.get(trans_d);
+      trans_d.display("DRV");
+      @(posedge aif.clk);
+      aif.a <= trans_d.a;
+      aif.b <= trans_d.b;
+    end    
+  endtask
+endclass
+
+class monitor;
+  transaction trans_m;
+  mailbox #(transaction) mbx;
+  
+  virtual add_if aif;
+  
+  function new (mailbox #(transaction) mbx);
+    this.mbx = mbx;
+  endfunction
+  
+  task run();
+    trans_m = new();
+    forever begin
+      repeat (3)
+      @ (posedge aif.clk);
+      trans_m.a = aif.a;
+      trans_m.b = aif.b;
+      trans_m.mul = aif.mul;
+      trans_m.display("MON");
+      mbx.put(trans_m);
+    end 
+  endtask  
+endclass
+
+class scoreboard;
+  transaction trans_sg;
+  transaction trans_sm;
+  mailbox #(transaction) mbx_m;
+  mailbox #(transaction) mbx_g;
+  
+  event next;
+  int correct=0;
+  int err=0;
+  
+  function new (mailbox #(transaction) mbx_m, mailbox #(transaction) mbx_g);
+    this.mbx_m = mbx_m;
+    this.mbx_g = mbx_g;
+  endfunction
+  
+  task run();
+    forever begin
+      mbx_m.get(trans_sm);
+      mbx_g.get(trans_sg);
+      if ((trans_sg.a * trans_sg.b) == (trans_sm.mul)) begin
+        correct++;
+        $display("[SCO]: %0t: a: %0d, b: %0d, mul: %0d", $time, trans_sg.a, trans_sg.b, trans_sm.mul);
+        $display("[SCO]: Test Passed: Correct: %0d, Error: %0d", correct, err);
+      end
+      else begin
+        err++;
+        $display("[SCO]: %0t: a: %0d, b: %0d, mul: %0d", $time, trans_sg.a, trans_sg.b, trans_sm.mul);
+        $display("[SCO]: Test Failed: Correct: %0d, Error: %0d", correct, err);
+      end
+    -> next;
+    end    
+  endtask  
+endclass
+
+class environment;
+  generator gen;
+  driver drv;
+  monitor mon;
+  scoreboard sco;
+  error err;
+  
+  mailbox #(transaction) mbx_gd;
+  mailbox #(transaction) mbx_gs;
+  mailbox #(transaction) mbx_ms;
+  
+  virtual add_if aif;
+  
+  event done;
+  event next;
+  
+  function new (virtual add_if aif);
+    mbx_gd = new();
+    mbx_gs = new();
+    mbx_ms = new();
+    
+    gen = new(mbx_gd, mbx_gs);
+    drv = new(mbx_gd);
+    mon = new(mbx_ms);
+    sco = new(mbx_ms, mbx_gs);
+    err = new();
+    gen.trans_g = err;
+    
+    this.aif = aif;
+    drv.aif = this.aif;
+    mon.aif = this.aif;
+    
+    gen.done = this.done;
+    gen.next = next;
+    sco.next = next;
+    
+  endfunction
+  
+  task run();
+    fork 
+      gen.run();
+      drv.run();
+      mon.run();
+      sco.run();
+    join_any
+    wait(done.triggered);
+    $display("[ENV]: %0t: Done received", $time);
+    $finish;
+  endtask  
+endclass
+
+module tb;
+  add_if aif();
+  environment env;
+  
+  initial aif.clk = 0;
+  always #5 aif.clk = ~aif.clk;
+  
+  add dut (.clk(aif.clk),
+           .a(aif.a),
+           .b(aif.b),
+           .mul(aif.mul));
+  
+  initial begin
+    env = new(aif);
+    env.gen.count = 30;
+    
+    env.run();
+  end  
+endmodule

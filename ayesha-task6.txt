@@ -1,0 +1,34 @@
+module tb;
+  reg [31:0] arr1[0:14];  
+  reg [31:0] arr2[0:14];
+  int flag;
+
+  initial begin
+    for (int i = 0; i < 15; i++) begin
+      arr1[i] = $urandom;
+      arr2[i] = $urandom;
+    end
+
+    $display("Array 1: ");
+    for (int i = 0; i < 15; i++) begin
+      $write("%0d ", arr1[i]);
+    end
+    $display("");
+
+    $display("Array 2: ");
+    for (int i = 0; i < 15; i++) begin
+      $write("%0d ", arr2[i]);
+    end
+    $display("");
+
+    flag = 1;
+    for (int i = 0; i < 15; i++) begin
+      if (arr1[i] != arr2[i]) begin
+        flag = 0;
+        break;
+      end
+    end
+
+    $display("Are the arrays equal? %0d", flag);
+  end  
+endmodule

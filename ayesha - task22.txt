@@ -1,0 +1,47 @@
+// Task 22: Code for transaction class is mentioned below. Write a code to send transaction data between generator and driver. 
+// Also, verify the data by printing the value of data members of generator and driver.
+
+class transaction;
+    bit [7:0] addr = 8'h12; 
+    bit [3:0] data = 4'h4;    
+    bit we = 1'b1;         
+    bit rst = 1'b0;       
+
+    function new();
+    endfunction
+
+    function void display(string name);
+        $display("%s: addr = %h, data = %h, we = %b, rst = %b", name, addr, data, we, rst);
+    endfunction
+endclass
+
+class generator;
+    virtual task generate_transaction(output transaction tr);
+        tr = new();
+        tr.addr = 8'hAB;  
+        tr.data = 4'h9; 
+        tr.we = 1'b0;   
+        tr.rst = 1'b1;   
+        tr.display("Generator");
+    endtask
+endclass
+
+class driver;
+    virtual task drive_transaction(input transaction tr);
+        tr.display("Driver");
+    endtask
+endclass
+
+module tb_top;
+    generator gen;
+    driver drv;
+    transaction tr;
+
+    initial begin
+        gen = new();
+        drv = new();
+        gen.generate_transaction(tr);
+        drv.drive_transaction(tr);
+        $finish;
+    end
+endmodule

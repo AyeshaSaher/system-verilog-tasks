@@ -1,0 +1,20 @@
+class first;
+  bit [7:0] data1;
+  bit [7:0] data2;
+  bit [7:0] data3;
+
+  function new(bit [7:0] a, bit [7:0] b, bit [7:0] c);
+    this.data1 = a;
+    this.data2 = b;
+    this.data3 = c;
+    $display("data1: %0d, data2: %0d, data3: %0d", this.data1, this.data2, this.data3);
+  endfunction
+endclass
+
+module tb; 
+  first f;
+
+  initial begin
+    f = new(2, 4, 56);
+  end
+endmodule
